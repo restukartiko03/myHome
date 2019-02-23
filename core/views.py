@@ -31,25 +31,32 @@ class DoorLogViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
             return Response('User With Username ' + request.data['username'] + ' Not Found')
             
         door = Door.objects.filter(house_id=request.data['id'], owner=user).first()
+        if door is None:
+            return Response({'success': False})
         log = DoorLog.objects.create(door=door)
         
-        return Response(DoorLogSerializer(log).data)
+        return Response({'success': True})
 
 
 class DoorViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     queryset = Door.objects.all()
     serializer_class = DoorSerializer
-    permission_classes = (permissions.IsAuthenticated,)
+    # permission_classes = (permissions.IsAuthenticated,)
 
     @action(methods=['post'], detail=False)
     def lock_unlock(self, request):
-        username = self.request.user.username
+        user = User.objects.filter(username=request.data['username']).first()
+        if user is None:
+            return Response({'success': False})
         
-        door = Door.objects.filter(owner__username=username, house_id=request.data['id']).first()
-        door.locked = not(door.locked)
-        door.save()
+        door = Door.objects.filter(owner__username=user.username, house_id=request.data['id']).first()
+        if door is None:
+            return Response({'success': False})
+        else:
+            door.locked = not(door.locked)
+            door.save()
 
-        return Response(DoorSerializer(door).data)
+        return Response({'success': True})
 
 
 class ElectricityAccountViewSet(viewsets.ModelViewSet):
@@ -61,17 +68,22 @@ class ElectricityAccountViewSet(viewsets.ModelViewSet):
 class LampViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     queryset = Lamp.objects.all()
     serializer_class = LampSerializer
-    permission_classes = (permissions.IsAuthenticated,)
+    # permission_classes = (permissions.IsAuthenticated,)
 
     @action(methods=['post'], detail=False)
     def turn_on_off(self, request):
-        username = self.request.user.username
+        user = User.objects.filter(username=request.data['username']).first()
+        if user is None:
+            return Response({'success': False})
         
-        lamp = Lamp.objects.filter(owner__username=username, house_id=request.data['id']).first()
-        lamp.on = not(lamp.on)
-        lamp.save()
+        lamp = Lamp.objects.filter(owner__username=user.username, house_id=request.data['id']).first()
+        if lamp is None:
+            return Response({'success': False})
+        else:
+            lamp.on = not(lamp.on)
+            lamp.save()
 
-        return Response(LampSerializer(lamp).data)
+        return Response({'success': True})
 
 
 class TokenViewSet(viewsets.ModelViewSet):
@@ -85,15 +97,14 @@ class TokenViewSet(viewsets.ModelViewSet):
         token = Token.objects.filter(code=request.data['code']).first()
         
         if account is None or token is None:
-            return Response('Electricity Account Or Token Not Found')
+            return Response({'success': False})
         else:
             account.balance += token.balance
             token.used = True
             account.save()
             token.save()
 
-        return Response(ElectricityAccountSerializer(account).data)
-
+        return Response({'success': True})
 
 class UserViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     queryset = User.objects.all()
@@ -117,6 +128,6 @@ class LoginViewSet(viewsets.GenericViewSet):
         user = authenticate(username=request.data['username'], password=request.data['password'])
         
         if not user:
-            return Response({'status': False})
+            return Response({'success': False})
         else:
-            return Response({'status': True})
+            return Response({'success': True})
